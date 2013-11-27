@@ -57,37 +57,63 @@ letDef = [ ("testDef", ["x", "y"], ELet True [ ("foo", EAp (EVar "addOne")
                                              , ("bar", EAp (EVar "addOne")
                                                            (EVar "y"))
                                              ]
-                                        (EAp (EVar "addOne") (EVar "foo")))
+                                        (EAp (EVar "foo")
+                                             (EAp (EAp (EVar "+") (EVar "bar"))
+                                                  (EVar "foo"))))
          ]
 
 pprint :: CoreProgram -> [Char]
 pprint prog = iDisplay (pprProgram prog)
 
-pprExpr :: CoreExpr -> Iseq
-pprExpr (ENum n) = iStr (shownum n)
-pprExpr (EVar v) = iStr v
-pprExpr (EAp e1 e2) = pprExpr e1 `iAppend` iStr " " `iAppend` pprAExpr e2
-pprExpr (ELet isrec defns expr) =
+
+pprInfixExpr :: Name -> NumberI -> CoreExpr -> CoreExpr -> NumberI -> Iseq
+pprInfixExpr op inf e1 e2 prec
+  | inf < prec = iConcat [ iStr "(", pprExpr e1 inf, iStr pOp
+                       , pprExpr e2 inf, iStr ")"]
+  | otherwise = iConcat [pprExpr e1 inf, iStr pOp, pprExpr e2 inf]
+  where
+    pOp = " " ++ op ++ " "
+
+pprExpr :: CoreExpr -> NumberI -> Iseq
+pprExpr (ENum n) prec = iStr (shownum n)
+pprExpr (EVar v) prec = iStr v
+pprExpr (EAp (EAp (EVar "*") e1) e2) prec = pprInfixExpr "*" 5 e1 e2 prec
+pprExpr (EAp (EAp (EVar "/") e1) e2) prec = pprInfixExpr "/" 5 e1 e2 prec
+pprExpr (EAp (EAp (EVar "+") e1) e2) prec = pprInfixExpr "+" 4 e1 e2 prec
+pprExpr (EAp (EAp (EVar "-") e1) e2) prec = pprInfixExpr "-" 4 e1 e2 prec
+pprExpr (EAp (EAp (EVar "==") e1) e2) prec = pprInfixExpr "==" 3 e1 e2 prec
+pprExpr (EAp (EAp (EVar "~=") e1) e2) prec = pprInfixExpr "~=" 3 e1 e2 prec
+pprExpr (EAp (EAp (EVar ">") e1) e2) prec = pprInfixExpr ">" 3 e1 e2 prec
+pprExpr (EAp (EAp (EVar ">=") e1) e2) prec = pprInfixExpr ">=" 3 e1 e2 prec
+pprExpr (EAp (EAp (EVar "<") e1) e2) prec = pprInfixExpr "<" 3 e1 e2 prec
+pprExpr (EAp (EAp (EVar "<=") e1) e2) prec = pprInfixExpr "<=" 3 e1 e2 prec
+pprExpr (EAp (EAp (EVar "&") e1) e2) prec = pprInfixExpr "&" 2 e1 e2 prec
+pprExpr (EAp (EAp (EVar "|") e1) e2) prec = pprInfixExpr "|" 1 e1 e2 prec
+pprExpr (EAp e1 e2) prec = iConcat [pprExpr e1 6, iStr " ", pprExpr e2 6]
+pprExpr (ELet isrec defns expr) prec =
   iConcat [ iStr keyword, iNewline
           , iStr " ", iIndent (pprDefns defns), iNewline
-          , iStr "in ", pprExpr expr
+          , iStr "in ", pprExpr expr prec
           ]
   where
     keyword
       | not isrec = "let"
       | isrec = "letrec"
-pprExpr (ELam vs expr) =
-  iStr "\\ " `iAppend` iInterleave (iStr " ") (map iStr vs)
-  `iAppend` iStr "." `iAppend` pprExpr expr
-pprExpr (ECase expr alts) =
-  iStr "case " `iAppend` pprExpr expr `iAppend` iStr " of"
-  `iAppend` iNewline `iAppend` iInterleave sep (map pprAlt alts)
+pprExpr (ELam vs expr) prec = iConcat [ iStr "\\ "
+                                      , iInterleave (iStr " ") (map iStr vs)
+                                      ,  iStr "." ,  pprExpr expr prec
+                                      ]
+pprExpr (ECase expr alts) prec = iConcat [ iStr "case " , pprExpr expr prec
+                                         , iStr " of", iNewline
+                                         , iInterleave sep (map pprAlt alts)
+                                         ]
   where
     sep = iConcat [ iStr ";", iNewline ]
     pprAlt (n, vs, expr) =
-      iStr "<" `iAppend` iStr (shownum n) `iAppend` iStr "> "
-      `iAppend` iInterleave (iStr " ") (map iStr vs) `iAppend` iStr " -> "
-      `iAppend` iIndent (pprExpr expr)
+      iConcat [ iStr "<" , iStr (shownum n) , iStr "> "
+              , iInterleave (iStr " ") (map iStr vs) , iStr " -> "
+              , iIndent (pprExpr expr prec)
+              ]
 
 pprDefns :: [(Name, CoreExpr)] -> Iseq
 pprDefns defns = iInterleave sep (map pprDefn defns)
@@ -96,7 +122,7 @@ pprDefns defns = iInterleave sep (map pprDefn defns)
 
 pprDefn :: (Name, CoreExpr) -> Iseq
 pprDefn (name, expr) = iConcat [ iStr name, iStr " = "
-                               , iIndent (pprExpr expr)
+                               , iIndent (pprExpr expr 6)
                                ]
 
 -- Exercise 1.2
@@ -110,19 +136,13 @@ iInterleave sep [] = iNil
 iInterleave sep [x] = x
 iInterleave sep (x:xs) = x `iAppend` sep `iAppend` iInterleave sep xs
 
--- Exercise 1.3
-pprAExpr :: CoreExpr -> Iseq
-pprAExpr e
-  | isAtomicExpr e = pprExpr e
-  | otherwise      = iStr "(" `iAppend` pprExpr e `iAppend` iStr ")"
-
 pprProgram :: CoreProgram -> Iseq
 pprProgram prog = iInterleave iNewline (map pprSc prog)
   where
     pprSc (name, [], expr) = pprDefn (name, expr)
     pprSc (name, vs, expr) = iConcat [ iStr name, iStr " "
                                      , iInterleave (iStr " ") (map iStr vs)
-                                     , iStr " = " , iIndent (pprExpr expr)
+                                     , iStr " = " , iIndent (pprExpr expr 6)
                                      ]
 
 mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
