@@ -1,9 +1,6 @@
 module Core where
 
--- | Miranda converts between big-num integers
--- and floats automatically. We simply default to 'Double'
--- until it starts causing us problems, if ever.
-type Number = Double
+import Core.Utils
 
 data Expr a = EVar Name
             | ENum Number
@@ -52,3 +49,5 @@ preludeDefs = [ ("I", ["x"], EVar "x")
               , ("twice" , ["f"], EAp (EAp (EVar "compose") (EVar "f"))
                                       (EVar "f"))
               ]
+
+pprint :: CoreProgram -> [Char]
