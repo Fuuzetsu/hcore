@@ -50,6 +50,16 @@ preludeDefs = [ ("I", ["x"], EVar "x")
                                       (EVar "f"))
               ]
 
+-- Exercise 1.6
+letDef :: CoreProgram
+letDef = [ ("testDef", ["x", "y"], ELet True [ ("foo", EAp (EVar "addOne")
+                                                           (EVar "x"))
+                                             , ("bar", EAp (EVar "addOne")
+                                                           (EVar "y"))
+                                             ]
+                                        (EAp (EVar "addOne") (EVar "foo")))
+         ]
+
 pprint :: CoreProgram -> [Char]
 pprint prog = iDisplay (pprProgram prog)
 
@@ -123,8 +133,14 @@ mkMultiAp n e1 e2 = foldll EAp e1 (take n e2s)
 iNil :: Iseq
 iNil = INil
 
+-- Exercise 1.7
 iStr :: [Char] -> Iseq
-iStr s = IStr s
+iStr "" = iNil
+iStr (s:ss) = foldll f (IStr [s]) ss
+  where
+    f :: IseqRep -> Char -> IseqRep
+    f x '\n' = x `iAppend` iNewline
+    f x c = x `iAppend` IStr [c]
 
 -- Exercise 1.5
 iAppend :: Iseq -> Iseq -> Iseq
@@ -133,22 +149,32 @@ iAppend s1 INil = s1
 iAppend s1 s2 = IAppend s1 s2
 
 iNewline :: Iseq
-iNewline = IStr "\n"
+iNewline = INewline
 
 iIndent :: Iseq -> Iseq
-iIndent i = i
+iIndent s = IIndent s
 
 iDisplay :: Iseq -> [Char]
-iDisplay s = flatten [s]
+iDisplay s = flatten 0 [(s, 0)]
 
-flatten :: [IseqRep] -> [Char]
-flatten [] = ""
-flatten (INil : seqs) = flatten seqs
-flatten (IStr s : seqs) = s ++ flatten seqs
-flatten (IAppend seq1 seq2 : seqs) = flatten (seq1 : seq2 : seqs)
+flatten :: NumberI -> [(IseqRep, NumberI)] -> [Char]
+flatten col [] = ""
+flatten col ((INil, indent) : seqs) = flatten col seqs
+flatten col ((INewline, indent) : seqs) =
+  "\n" ++ spaces indent ++ flatten indent seqs
+  where
+    spaces n = replicate (fromIntegral n) ' '
+flatten col ((IIndent s, indent) : seqs) = flatten col ((s, col) : seqs)
+flatten col ((IStr s, indent) : seqs) = s ++ flatten (col + l s) seqs
+  where
+    l = fromIntegral . length
+flatten col ((IAppend seq1 seq2, indent) : seqs) =
+  flatten col ((seq1, indent) : (seq2, indent) : seqs)
 
 type Iseq = IseqRep
 
 data IseqRep = INil
              | IStr [Char]
              | IAppend IseqRep IseqRep
+             | IIndent IseqRep
+             | INewline
