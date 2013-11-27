@@ -107,12 +107,13 @@ pprAExpr e
   | otherwise      = iStr "(" `iAppend` pprExpr e `iAppend` iStr ")"
 
 pprProgram :: CoreProgram -> Iseq
-pprProgram prog = iInterleave (iNewline `iAppend` iNewline) (map pprSc prog)
+pprProgram prog = iInterleave iNewline (map pprSc prog)
   where
+    pprSc (name, [], expr) = pprDefn (name, expr)
     pprSc (name, vs, expr) = iConcat [ iStr name, iStr " "
                                      , iInterleave (iStr " ") (map iStr vs)
                                      , iStr " = " , iIndent (pprExpr expr)
-                               ]
+                                     ]
 
 mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
 mkMultiAp n e1 e2 = foldll EAp e1 (take n e2s)
@@ -120,22 +121,31 @@ mkMultiAp n e1 e2 = foldll EAp e1 (take n e2s)
     e2s = e2 : e2s
 
 iNil :: Iseq
-iNil = undefined
+iNil = INil
 
 iStr :: [Char] -> Iseq
-iStr = undefined
+iStr s = IStr s
 
+-- Exercise 1.5
 iAppend :: Iseq -> Iseq -> Iseq
-iAppend = undefined
+iAppend INil s2 = s2
+iAppend s1 INil = s1
+iAppend s1 s2 = IAppend s1 s2
 
 iNewline :: Iseq
-iNewline = undefined
+iNewline = IStr "\n"
 
 iIndent :: Iseq -> Iseq
-iIndent = undefined
+iIndent i = i
 
 iDisplay :: Iseq -> [Char]
-iDisplay = undefined
+iDisplay s = flatten [s]
+
+flatten :: [IseqRep] -> [Char]
+flatten [] = ""
+flatten (INil : seqs) = flatten seqs
+flatten (IStr s : seqs) = s ++ flatten seqs
+flatten (IAppend seq1 seq2 : seqs) = flatten (seq1 : seq2 : seqs)
 
 type Iseq = IseqRep
 
