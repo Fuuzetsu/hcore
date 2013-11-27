@@ -51,3 +51,19 @@ preludeDefs = [ ("I", ["x"], EVar "x")
               ]
 
 pprint :: CoreProgram -> [Char]
+pprint = undefined
+
+pprExpr :: CoreExpr -> [Char]
+pprExpr (ENum n) = shownum n
+pprExpr (EVar v) = v
+pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprAExpr e2
+
+pprAExpr :: CoreExpr -> [Char]
+pprAExpr e
+  | isAtomicExpr e = pprExpr e
+  | otherwise      = "(" ++ pprExpr e ++ ")"
+
+mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
+mkMultiAp n e1 e2 = foldll EAp e1 (take n e2s)
+  where
+    e2s = e2 : e2s
