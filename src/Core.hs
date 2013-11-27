@@ -51,19 +51,94 @@ preludeDefs = [ ("I", ["x"], EVar "x")
               ]
 
 pprint :: CoreProgram -> [Char]
-pprint = undefined
+pprint prog = iDisplay (pprProgram prog)
 
-pprExpr :: CoreExpr -> [Char]
-pprExpr (ENum n) = shownum n
-pprExpr (EVar v) = v
-pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprAExpr e2
+pprExpr :: CoreExpr -> Iseq
+pprExpr (ENum n) = iStr (shownum n)
+pprExpr (EVar v) = iStr v
+pprExpr (EAp e1 e2) = pprExpr e1 `iAppend` iStr " " `iAppend` pprAExpr e2
+pprExpr (ELet isrec defns expr) =
+  iConcat [ iStr keyword, iNewline
+          , iStr " ", iIndent (pprDefns defns), iNewline
+          , iStr "in ", pprExpr expr
+          ]
+  where
+    keyword
+      | not isrec = "let"
+      | isrec = "letrec"
+pprExpr (ELam vs expr) =
+  iStr "\\ " `iAppend` iInterleave (iStr " ") (map iStr vs)
+  `iAppend` iStr "." `iAppend` pprExpr expr
+pprExpr (ECase expr alts) =
+  iStr "case " `iAppend` pprExpr expr `iAppend` iStr " of"
+  `iAppend` iNewline `iAppend` iInterleave sep (map pprAlt alts)
+  where
+    sep = iConcat [ iStr ";", iNewline ]
+    pprAlt (n, vs, expr) =
+      iStr "<" `iAppend` iStr (shownum n) `iAppend` iStr "> "
+      `iAppend` iInterleave (iStr " ") (map iStr vs) `iAppend` iStr " -> "
+      `iAppend` iIndent (pprExpr expr)
 
-pprAExpr :: CoreExpr -> [Char]
+pprDefns :: [(Name, CoreExpr)] -> Iseq
+pprDefns defns = iInterleave sep (map pprDefn defns)
+  where
+    sep = iConcat [ iStr ";", iNewline ]
+
+pprDefn :: (Name, CoreExpr) -> Iseq
+pprDefn (name, expr) = iConcat [ iStr name, iStr " = "
+                               , iIndent (pprExpr expr)
+                               ]
+
+-- Exercise 1.2
+iConcat :: [Iseq] -> Iseq
+iConcat [] = iNil
+iConcat [x] = x
+iConcat (x:xs) = iAppend x (iConcat xs)
+
+iInterleave :: Iseq -> [Iseq] -> Iseq
+iInterleave sep [] = iNil
+iInterleave sep [x] = x
+iInterleave sep (x:xs) = x `iAppend` sep `iAppend` iInterleave sep xs
+
+-- Exercise 1.3
+pprAExpr :: CoreExpr -> Iseq
 pprAExpr e
   | isAtomicExpr e = pprExpr e
-  | otherwise      = "(" ++ pprExpr e ++ ")"
+  | otherwise      = iStr "(" `iAppend` pprExpr e `iAppend` iStr ")"
+
+pprProgram :: CoreProgram -> Iseq
+pprProgram prog = iInterleave (iNewline `iAppend` iNewline) (map pprSc prog)
+  where
+    pprSc (name, vs, expr) = iConcat [ iStr name, iStr " "
+                                     , iInterleave (iStr " ") (map iStr vs)
+                                     , iStr " = " , iIndent (pprExpr expr)
+                               ]
 
 mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
 mkMultiAp n e1 e2 = foldll EAp e1 (take n e2s)
   where
     e2s = e2 : e2s
+
+iNil :: Iseq
+iNil = undefined
+
+iStr :: [Char] -> Iseq
+iStr = undefined
+
+iAppend :: Iseq -> Iseq -> Iseq
+iAppend = undefined
+
+iNewline :: Iseq
+iNewline = undefined
+
+iIndent :: Iseq -> Iseq
+iIndent = undefined
+
+iDisplay :: Iseq -> [Char]
+iDisplay = undefined
+
+type Iseq = IseqRep
+
+data IseqRep = INil
+             | IStr [Char]
+             | IAppend IseqRep IseqRep
