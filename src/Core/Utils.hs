@@ -1,14 +1,7 @@
 module Core.Utils where
 
+import Core.Types
 import Data.List (genericLength, sort)
-
--- We don't have Miranda's abstype so we use a regular
--- data type and provide some functions on it
-type Number = Double
-
--- We cheat and just use integers in places where we would anyway
--- instead of trying to emulate Miranda's ‘num’ with Doubles.
-type NumberI = Integer
 
 -- | Miranda built-in
 shownum :: (Show a, Num a) => a -> String
