@@ -1,6 +1,13 @@
 module Core where
 
 import Core.Utils
+import Data.Char (isDigit, isLetter)
+
+digit :: Char -> Bool
+digit = isDigit
+
+letter :: Char -> Bool
+letter = isLetter
 
 data Expr a = EVar Name
             | ENum Number
@@ -213,8 +220,31 @@ data IseqRep = INil
              | IIndent IseqRep
              | INewline
 
-lexCore :: [Char] -> [Token]
-lexCore = undefined
+lexCore :: [Char] -> NumberI -> [Token]
+lexCore [] l = []
+lexCore ('|':'|':cs) l = lexCore cs l -- Exercise 1.9
+lexCore (c:c':cs) l
+  | [c, c'] `elem` twoCharOps = (l, [c, c']) : lexCore cs l -- Exercise 1.10
+lexCore ('\n':cs) l = lexCore cs (l + 1)
+lexCore (c:cs) l
+  | isWhiteSpace c = lexCore cs l
+  | digit c = let numTok = (l, c : takeWhile digit cs)
+                  rest = dropWhile digit cs
+              in numTok : lexCore rest l
+  | letter c = let varTok = (l, c : takeWhile isIdChar cs)
+                   rest = dropWhile isIdChar cs
+               in varTok : lexCore rest l
+lexCore (c:cs) l = (l, [c]) : lexCore cs l
+
+-- Exercise 1.10
+twoCharOps :: [String]
+twoCharOps = ["==", "~=", ">=", "<=", "->"]
+
+isIdChar :: Char -> Bool
+isIdChar c = letter c || digit c || c == '_'
+
+isWhiteSpace :: Char -> Bool
+isWhiteSpace c = c `elem` " \t\n"
 
 syntax :: [Token] -> CoreProgram
 syntax = undefined
@@ -223,6 +253,7 @@ syntax = undefined
 -- be a problem: in Miranda we can just read the file without
 -- reflecting it in the type.
 parse :: [Char] -> IO CoreProgram
-parse fname = syntax `fmap` lexCore `fmap` readFile fname
+parse fname = syntax `fmap` flip lexCore 0 `fmap` readFile fname
 
-type Token = [Char]
+-- Exercise 1.11
+type Token = (NumberI, [Char])
