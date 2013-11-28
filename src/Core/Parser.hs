@@ -1,14 +1,8 @@
 module Core.Parser where
 
+import Core.Parser.Utils
 import Core.Types
 import Core.Utils
-import Data.Char (isDigit, isLetter)
-
-digit :: Char -> Bool
-digit = isDigit
-
-letter :: Char -> Bool
-letter = isLetter
 
 lexCore :: [Char] -> NumberI -> [Token]
 lexCore [] l = []
