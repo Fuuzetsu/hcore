@@ -212,3 +212,17 @@ data IseqRep = INil
              | IAppend IseqRep IseqRep
              | IIndent IseqRep
              | INewline
+
+lexCore :: [Char] -> [Token]
+lexCore = undefined
+
+syntax :: [Token] -> CoreProgram
+syntax = undefined
+
+-- We could unsafePerformIO if the IO monad turns out to
+-- be a problem: in Miranda we can just read the file without
+-- reflecting it in the type.
+parse :: [Char] -> IO CoreProgram
+parse fname = syntax `fmap` lexCore `fmap` readFile fname
+
+type Token = [Char]
