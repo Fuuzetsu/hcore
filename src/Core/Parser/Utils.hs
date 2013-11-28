@@ -9,20 +9,23 @@ digit = isDigit
 letter :: Char -> Bool
 letter = isLetter
 
--- Strange, exercise 1.11 made us change Token
--- to something incompatible with the code in 1.6.2. We'll stick with
--- String until the book makes it clear whether we actually want to
--- use our changed Token, the default one, or maybe parametrise
--- Parser with another type variable.
-type ParserToken = String
+alpha :: Char -> Bool
+alpha '_' = True
+alpha c = letter c
 
-type Parser a = [ParserToken] -> [(a, [ParserToken])]
+type Parser a = [Token] -> [(a, [Token])]
 
 pLit :: [Char] -> Parser [Char]
 pLit s = pSat (== s)
 
 pVar :: Parser [Char]
-pVar = pSat (\x -> letter (head x) && x `notElem` keywords)
+pVar [] = []
+pVar (tok:toks)
+  | tok `elem` keywords = []
+  | letter (head tok) = pSat (all (\x -> digit x || alpha x)) (tok : toks)
+  | otherwise = []
+
+            -- pSat (\x -> letter (head x) && x `notElem` keywords)
 
 -- Exercise 1.17
 keywords :: [String]
@@ -80,5 +83,5 @@ pSat f (tok:toks)
   | otherwise = []
 
 -- Exercise 1.18
-pNum :: Parser NumberI
+pNum :: Parser Number
 pNum = pApply (pSat $ all digit) read

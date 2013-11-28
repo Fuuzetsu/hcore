@@ -8,7 +8,7 @@ pprint :: CoreProgram -> [Char]
 pprint prog = iDisplay (pprProgram prog)
 
 
-pprInfixExpr :: Name -> NumberI -> CoreExpr -> CoreExpr -> NumberI -> Iseq
+pprInfixExpr :: Name -> Number -> CoreExpr -> CoreExpr -> Number -> Iseq
 pprInfixExpr op inf e1 e2 prec
   | inf < prec = iConcat [ iStr "(", pprExpr e1 inf, iStr pOp
                        , pprExpr e2 inf, iStr ")"]
@@ -16,7 +16,7 @@ pprInfixExpr op inf e1 e2 prec
   where
     pOp = " " ++ op ++ " "
 
-pprExpr :: CoreExpr -> NumberI -> Iseq
+pprExpr :: CoreExpr -> Number -> Iseq
 pprExpr (ENum n) prec = iStr (shownum n)
 pprExpr (EVar v) prec = iStr v
 pprExpr (EAp (EAp (EVar "*") e1) e2) prec = pprInfixExpr "*" 5 e1 e2 prec
@@ -33,8 +33,8 @@ pprExpr (EAp (EAp (EVar "&") e1) e2) prec = pprInfixExpr "&" 2 e1 e2 prec
 pprExpr (EAp (EAp (EVar "|") e1) e2) prec = pprInfixExpr "|" 1 e1 e2 prec
 pprExpr (EAp e1 e2) prec = iConcat [pprExpr e1 6, iStr " ", pprExpr e2 6]
 pprExpr (ELet isrec defns expr) prec =
-  iConcat [ iStr keyword, iNewline
-          , iStr " ", iIndent (pprDefns defns), iNewline
+  iConcat [ iStr keyword , iNewline
+          , iStr "  ", iIndent (pprDefns defns), iNewline
           , iStr "in ", pprExpr expr prec
           ]
   where
@@ -122,7 +122,7 @@ iDisplay s = flatten 0 [(s, 0)]
 iNum :: (Num a, Show a) => a -> Iseq
 iNum n = iStr (show n)
 
-iFWNum :: (Num a, Show a) => NumberI -> a -> Iseq
+iFWNum :: (Num a, Show a) => Number -> a -> Iseq
 iFWNum width n = iStr $ spaces (width - fromIntegral (length digits)) ++ digits
   where
     digits = show n
@@ -133,7 +133,7 @@ iLayn seqs = iConcat (map layItem (zip [1 ..] seqs))
   where
     layItem (n, s) = iConcat [ iFWNum 4 n, iStr ") ", iIndent s, iNewline ]
 
-flatten :: NumberI -> [(IseqRep, NumberI)] -> [Char]
+flatten :: Number -> [(IseqRep, Number)] -> [Char]
 flatten col [] = ""
 flatten col ((INil, indent) : seqs) = flatten col seqs
 flatten col ((INewline, indent) : seqs) =

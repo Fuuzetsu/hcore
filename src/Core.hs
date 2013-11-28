@@ -5,9 +5,6 @@ import Core.Pretty
 import Core.Types
 import Core.Utils
 
-recursive = True
-nonRecursive = False
-
 bindersOf :: [(a, b)] -> [a]
 bindersOf defns = [name | (name, rhs) <- defns]
 
@@ -42,3 +39,12 @@ letDef = [ ("testDef", ["x", "y"], ELet True [ ("foo", EAp (EVar "addOne")
                                              (EAp (EAp (EVar "+") (EVar "bar"))
                                                   (EVar "foo"))))
          ]
+
+-- Exercise 1.21 test
+sampleProgram :: CoreProgram
+sampleProgram = syntax . lexCore $
+  unlines [ "f = 3;", "g x y = let z = x in z;"
+          , "h x = case (let y = x in y) of"
+          , "        <1> -> 2;"
+          , "        <2> -> 5"
+          ]

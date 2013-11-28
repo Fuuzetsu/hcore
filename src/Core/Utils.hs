@@ -48,7 +48,7 @@ remove ((a', n):cts) a
   | otherwise = (a', n) : remove cts a
 
 type Heap a = (Number, [Number], [(Number, a)])
-type Addr = Double
+type Addr = Number
 
 -- Association list, A.2
 
