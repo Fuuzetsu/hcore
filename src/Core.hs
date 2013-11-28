@@ -177,6 +177,20 @@ iIndent s = IIndent s
 iDisplay :: Iseq -> [Char]
 iDisplay s = flatten 0 [(s, 0)]
 
+iNum :: (Num a, Show a) => a -> Iseq
+iNum n = iStr (show n)
+
+iFWNum :: (Num a, Show a) => NumberI -> a -> Iseq
+iFWNum width n = iStr $ spaces (width - fromIntegral (length digits)) ++ digits
+  where
+    digits = show n
+    spaces x = replicate (fromIntegral x) ' '
+
+iLayn :: [Iseq] -> Iseq
+iLayn seqs = iConcat (map layItem (zip [1 ..] seqs))
+  where
+    layItem (n, s) = iConcat [ iFWNum 4 n, iStr ") ", iIndent s, iNewline ]
+
 flatten :: NumberI -> [(IseqRep, NumberI)] -> [Char]
 flatten col [] = ""
 flatten col ((INil, indent) : seqs) = flatten col seqs
